@@ -1,0 +1,21 @@
+cmake_minimum_required (VERSION 3.0)
+
+project(GevDeviceLib)
+
+set(GEVDEVICELIB_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+file(GLOB GEVDEVICELIB_HEADERS "${GEVDEVICELIB_INCLUDE}/*.h")
+
+file(GLOB GEVDEVICELIB_SRC "*.cpp")
+
+if (WIN32)
+  list(APPEND GEVDEVICELIB_SRC "WinSocket/WinUdpPort.cpp")
+else()
+  list(APPEND GEVDEVICELIB_SRC "UnixSocket/UnixUdpPort.cpp")
+endif()
+
+include_directories(${GEVDEVICELIB_INCLUDE} ${PROMISELIB_INCLUDE} ${GENICAMLIB_INCLUDE} ${ZLIB_INCLUDE_DIRS})
+
+add_library(GevDeviceLib ${GEVDEVICELIB_SRC})
+
+set(GEVDEVICELIB_INCLUDE ${GEVDEVICELIB_INCLUDE} PARENT_SCOPE)
