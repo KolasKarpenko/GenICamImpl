@@ -1,0 +1,2 @@
+# GenICamImpl
+Crossplatform GenIcam implementation
