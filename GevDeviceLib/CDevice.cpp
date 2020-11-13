@@ -211,8 +211,8 @@ void CDevice::OnFrameStreamHandler(const std::vector<uint8_t>& data)
 				}
 				else{
 					std::stringstream ss;
-					ss << "Frame stream error. Lost package: " << m_currentFrameDataPtr->LostPackets;
-					OnError(ss.str());
+					ss << "Lost package: " << m_currentFrameDataPtr->LostPackets;
+					OnError(Error::FrameStreamError, ss.str());
 				}
 			}
 			break;
@@ -225,7 +225,7 @@ void CDevice::OnFrameStreamHandler(const std::vector<uint8_t>& data)
 	else {
 		std::stringstream ss;
 		ss << "Can not grab frame. Status: " << StringStatus(status);
-		OnError(ss.str());
+		OnError(Error::FrameStreamError, ss.str());
 	}
 }
 
@@ -496,7 +496,7 @@ void CDevice::Connect(uint32_t cameraControlIntervalMs)
 	auto xmlPromise = GetGenICamApiXml();
 	std::string xml;
 	if (!xmlPromise->Result(xml, error)) {
-		OnError(error);
+		OnError(Error::APIError, error);
 		m_connected = false;
 		return;
 	}
@@ -504,13 +504,13 @@ void CDevice::Connect(uint32_t cameraControlIntervalMs)
 	try{
 		m_genApi._LoadXMLFromString(xml.c_str());
 		if(!m_genApi._Connect(this)){
-			OnError("GenICam API connection error.");
+			OnError(Error::APIError, "GenICam API connection error.");
 			m_connected = false;
 			return;
 		}
 	}
 	catch(const std::exception& e){
-		OnError(e.what());
+		OnError(Error::APIError, e.what());
 		m_connected = false;
 		return;
 	}
@@ -528,11 +528,11 @@ void CDevice::Connect(uint32_t cameraControlIntervalMs)
 
 				bool result = false;
 				std::string error;
-				if (controlPromise->Result(result, error, 500)){
+				if (controlPromise->Result(result, 500)){
 					break;
 				}
-				else if (i == 4){
-					OnError(error);
+				else{
+					OnError(Error::ConnectionError, "Head beat timeout");
 				}
 			}
 		}
@@ -540,7 +540,7 @@ void CDevice::Connect(uint32_t cameraControlIntervalMs)
 
 	if (!error.empty()){
 		m_connected = false;
-		OnError(error);
+		OnError(Error::ConnectionError, error);
 	}
 }
 
@@ -586,7 +586,7 @@ void CDevice::Read(void * pBuffer, int64_t Address, int64_t Length)
 		std::vector<uint8_t> value;
 		std::string error;
 		if (!readRegister->Result(value)){
-			OnError(error);
+			OnError(Error::APIError, error);
 			break;
 		}
 
@@ -626,7 +626,7 @@ void CDevice::Write(const void * pBuffer, int64_t Address, int64_t Length)
 
 		if (!writeRegister->Result(ok, error)){
 			if (m_errorCb){
-				m_errorCb(error);
+				m_errorCb(Error::APIError, error);
 			}
 			break;
 		}
@@ -635,6 +635,23 @@ void CDevice::Write(const void * pBuffer, int64_t Address, int64_t Length)
 		bufferPtr += length;
 		Address += length;
 	}
+}
+
+std::string CDevice::ErrorTypeToString(Error type)
+{
+	switch (type)
+	{
+	case gevdevice::CDevice::ConnectionError:
+		return "ConnectionError";
+	case gevdevice::CDevice::FrameStreamError:
+		return "FrameStreamError";
+	case gevdevice::CDevice::APIError:
+		return "APIError";
+	default:
+		break;
+	}
+
+	return "UnknownError";
 }
 
 const std::string & CDevice::GetApiXml() const
@@ -780,10 +797,10 @@ TPromise<std::string>::PromisePtr CDevice::GetGenICamApiXml()
 	});
 }
 
-void CDevice::OnError(const std::string & err)
+void CDevice::OnError(Error errType, const std::string & err)
 {
 	if (m_errorCb){
-		m_errorCb(err);
+		m_errorCb(errType, err);
 	}
 }
 

@@ -56,17 +56,21 @@ int main(int argc, char* argv[])
 	auto connectionsPromise = gevdevice::CDevice::FindAll();
 	std::vector<gevdevice::UdpPort::Connection> connections;
 	connectionsPromise->Result(connections);
-	
+
 	std::cout << "Devices in network: " << connections.size() << std::endl;
-	
+
+	if (connections.empty()) {
+		return 0;
+	}
+
 	int imgCount = 0;
 	auto start = std::chrono::high_resolution_clock::now();
 
-	gevdevice::CDevice::TFrameCallBack onFrame = [&imgCount, &start](const gevdevice::FrameData& frame){
+	gevdevice::CDevice::TFrameCallBack onFrame = [&imgCount, &start](const gevdevice::FrameData& frame) {
 		std::lock_guard<std::mutex> lock(imageDataMutex);
 		imageData = frame;
 
-		if (imageData.PixelType & GVSP_PIX_OCCUPY8BIT){
+		if (imageData.PixelType & GVSP_PIX_OCCUPY8BIT) {
 			imageData = gevdevice::ImageData::Demosaic(imageData);
 		}
 
@@ -75,7 +79,7 @@ int main(int argc, char* argv[])
 		auto curr = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(curr - start).count();
 
-		if (duration  > 1000){
+		if (duration > 1000) {
 			start = curr;
 
 			std::cout << "FPS " << imgCount << std::endl;
@@ -83,102 +87,109 @@ int main(int argc, char* argv[])
 		}
 	};
 
-	gevdevice::CDevice::TErrorCallBack onError = [](const std::string& err){ std::cout << err << std::endl; };
+	gevdevice::CDevice::TErrorCallBack onError = [](gevdevice::CDevice::Error errType, const std::string& err) {
+		std::cout << gevdevice::CDevice::ErrorTypeToString(errType) << " " << err << std::endl;
+	};
 
-	if (connections.size() > 0){
-		std::cout << "connecting to device: " << gevdevice::UdpPort::IpAddressToString(connections[0].cameraAddr) << std::endl;
+	std::cout << "connecting to device: " << gevdevice::UdpPort::IpAddressToString(connections[0].cameraAddr) << std::endl;
 
-		auto camera = gevdevice::CDevice::Create(connections[0], onFrame, onError);
-		camera->Connect();
-		GenApi::CCommandPtr acqStart = camera->GetGenApi()._GetNode("AcquisitionStart");
+	auto camera = gevdevice::CDevice::Create(connections[0], onFrame, onError);
+	camera->Connect();
 
-		GenApi_3_2::CNodeMapRef api = camera->GetGenApi();
-		GenApi_3_2::NodeList_t nodes;
-		api._GetNodes(nodes);
+	if (!camera->IsConnected()) {
+		return 0;
+	}
 
-		for (GenApi_3_2::INode* node : nodes){
-			if (node->GetAccessMode() == GenApi_3_2::EAccessMode::NA ||
-				node->GetAccessMode() == GenApi_3_2::EAccessMode::NI ||
-				node->GetAccessMode() == GenApi_3_2::EAccessMode::WO
-			){
-				continue;
-			}
+	GenApi::CCommandPtr acqStart = camera->GetGenApi()._GetNode("AcquisitionStart");
 
-			std::cout << node->GetName() << " : ";
-			
-			GenApi::CCommandPtr comandPtr = node;
-			if (comandPtr.IsValid()){
-				std::cout << "__comand__" << std::endl;
-				continue;
-			}
+	GenApi_3_2::CNodeMapRef api = camera->GetGenApi();
+	GenApi_3_2::NodeList_t nodes;
+	api._GetNodes(nodes);
 
-			GenApi::CStringPtr strPtr = node;
-			if (strPtr.IsValid()){
-				std::cout << strPtr->GetValue() << std::endl;
-				continue;
-			}
-
-			GenApi::CBooleanPtr boolPtr = node;
-			if (boolPtr.IsValid()){
-				std::cout << boolPtr->GetValue() << std::endl;
-				continue;
-			}
-
-			GenApi::CIntegerPtr intPtr = node;
-			if (intPtr.IsValid()){
-				std::cout << intPtr->GetValue() << std::endl;
-				continue;
-			}
-
-			GenApi::CFloatPtr floatPtr = node;
-			if (floatPtr.IsValid()){
-				std::cout << floatPtr->GetValue() << std::endl;
-				continue;
-			}
-		}
-		
-		GenApi::CIntegerPtr width = camera->GetGenApi()._GetNode("Width");
-		GenApi::CIntegerPtr height = camera->GetGenApi()._GetNode("Height");
-
-		int64_t winWidth = 1000;
-		int64_t winHeight = 1000;
-
-		if (width.IsValid()){
-			winWidth = width->GetValue();
-			std::cout << "Width " << winHeight << std::endl;
+	for (GenApi_3_2::INode* node : nodes) {
+		if (node->GetAccessMode() == GenApi_3_2::EAccessMode::NA ||
+			node->GetAccessMode() == GenApi_3_2::EAccessMode::NI ||
+			node->GetAccessMode() == GenApi_3_2::EAccessMode::WO
+			) {
+			continue;
 		}
 
-		if (height.IsValid()){
-			winHeight = height->GetValue();
-			std::cout << "Height " << winHeight << std::endl;
+		std::cout << node->GetName() << " : ";
+
+		GenApi::CCommandPtr comandPtr = node;
+		if (comandPtr.IsValid()) {
+			std::cout << "__comand__" << std::endl;
+			continue;
 		}
 
-		if (acqStart.IsValid()){
-			acqStart->Execute();
-			std::cout << "AcquisitionStart" << std::endl;
-
-			glutInit(&argc, argv);                 // Initialize GLUT
-			glutInitWindowSize(winWidth/2, winHeight/2);   // Set the window's initial width & height
-			glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
-			glutCreateWindow("Test"); // Create a window with the given title
-
-			glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-			glEnable(GL_TEXTURE_2D);
-
-			glutDisplayFunc(display); // Register display callback handler for window re-paint
-			glutTimerFunc(TIMERMSECS, animate, 0);
-			glutMainLoop();
-		}
-		else{
-			std::cout << "AcquisitionStart command is not exists" << std::endl;
+		GenApi::CStringPtr strPtr = node;
+		if (strPtr.IsValid()) {
+			std::cout << strPtr->GetValue() << std::endl;
+			continue;
 		}
 
-		GenApi::CCommandPtr acqStop = camera->GetGenApi()._GetNode("AcquisitionStop");
-
-		if (acqStop.IsValid()){
-			acqStop->Execute();
-			std::cout << "AcquisitionStop" << std::endl;
+		GenApi::CBooleanPtr boolPtr = node;
+		if (boolPtr.IsValid()) {
+			std::cout << boolPtr->GetValue() << std::endl;
+			continue;
 		}
+
+		GenApi::CIntegerPtr intPtr = node;
+		if (intPtr.IsValid()) {
+			std::cout << intPtr->GetValue() << std::endl;
+			continue;
+		}
+
+		GenApi::CFloatPtr floatPtr = node;
+		if (floatPtr.IsValid()) {
+			std::cout << floatPtr->GetValue() << std::endl;
+			continue;
+		}
+	}
+
+	GenApi::CIntegerPtr width = camera->GetGenApi()._GetNode("Width");
+	GenApi::CIntegerPtr height = camera->GetGenApi()._GetNode("Height");
+
+	int64_t winWidth = 1000;
+	int64_t winHeight = 1000;
+
+	if (width.IsValid()) {
+		winWidth = width->GetValue();
+		std::cout << "Width " << winHeight << std::endl;
+	}
+
+	if (height.IsValid()) {
+		winHeight = height->GetValue();
+		std::cout << "Height " << winHeight << std::endl;
+	}
+
+	if (acqStart.IsValid()) {
+		acqStart->Execute();
+		std::cout << "AcquisitionStart" << std::endl;
+
+		glutInit(&argc, argv);                 // Initialize GLUT
+		glutInitWindowSize(winWidth / 2, winHeight / 2);   // Set the window's initial width & height
+		glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
+		glutCreateWindow("Test"); // Create a window with the given title
+
+		glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+		glEnable(GL_TEXTURE_2D);
+
+		glutDisplayFunc(display); // Register display callback handler for window re-paint
+		glutTimerFunc(TIMERMSECS, animate, 0);
+
+		glutMainLoop();
+	}
+	else {
+		std::cout << "AcquisitionStart command is not exists" << std::endl;
+	}
+
+
+	GenApi::CCommandPtr acqStop = camera->GetGenApi()._GetNode("AcquisitionStop");
+
+	if (acqStop.IsValid()) {
+		acqStop->Execute();
+		std::cout << "AcquisitionStop" << std::endl;
 	}
 
 

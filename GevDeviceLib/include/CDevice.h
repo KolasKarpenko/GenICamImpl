@@ -11,9 +11,17 @@ namespace gevdevice{
 class CDevice : public GenApi::CPortImpl
 {
 public:
+	enum Error
+	{
+		Unknown,
+		ConnectionError,
+		FrameStreamError,
+		APIError
+	};
+
 	typedef std::shared_ptr<CDevice> CDevicePtr;
 	typedef std::function<void(const FrameData& frame)> TFrameCallBack;
-	typedef std::function<void(const std::string& error)> TErrorCallBack;
+	typedef std::function<void(Error errType, const std::string& error)> TErrorCallBack;
 	typedef TPromise<std::vector<UdpPort::Connection>>::PromisePtr UdpConnnectionPromisePtr;
 
 	~CDevice();
@@ -43,6 +51,8 @@ public:
 	virtual void Read(void *pBuffer, int64_t Address, int64_t Length) override;
 	virtual void Write(const void *pBuffer, int64_t Address, int64_t Length) override;
 
+	static std::string ErrorTypeToString(Error type);
+
 private:
 	typedef std::function<void(const std::vector<uint8_t>& message, uint16_t messageType, uint16_t status)> OnReceaveMessage;
 
@@ -61,7 +71,7 @@ private:
 	TPromise<bool>::PromisePtr SendHeartBeat(uint32_t cameraControlIntervalMs);
 	TPromise<std::string>::PromisePtr GetGenICamApiXml();
 
-	void OnError(const std::string& err);
+	void OnError(Error errType, const std::string& err);
 
 	uint16_t m_packetSize;
 	uint32_t m_localIp;
