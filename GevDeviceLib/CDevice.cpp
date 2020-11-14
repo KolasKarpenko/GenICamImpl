@@ -146,7 +146,7 @@ void CDevice::FinishSystem()
 	UdpPort::FinishSockets();
 }
 
-CDevice::CDevice(const UdpPort::Connection& connection, const TFrameCallBack& frameCb, uint16_t packetSize, uint16_t apiPort, uint16_t imageStreamPort) :
+CDevice::CDevice(const UdpPort::Connection& connection, int apiTimeoutMs, const TFrameCallBack& frameCb, uint16_t packetSize, uint16_t apiPort, uint16_t imageStreamPort) :
 	m_packetSize(packetSize),
 	m_frameCb(frameCb),
 	m_localIp(connection.localAddr),
@@ -154,6 +154,7 @@ CDevice::CDevice(const UdpPort::Connection& connection, const TFrameCallBack& fr
 	m_imageStreamPortNum(imageStreamPort),
 	m_apiPortNum(apiPort),
 	m_connected(false),
+	m_apiTimeout(apiTimeoutMs),
 	m_currentFrameDataPtr(nullptr)
 {
 }
@@ -285,15 +286,15 @@ CDevice::UdpConnnectionPromisePtr CDevice::FindAll(uint32_t waitTimeMs)
 	});
 }
 
-CDevice::CDevicePtr CDevice::Create(const UdpPort::Connection& connection, const TFrameCallBack& frameCb, uint16_t packetSize, uint16_t apiPort, uint16_t imageStreamPort)
+CDevice::CDevicePtr CDevice::Create(const UdpPort::Connection& connection, const TFrameCallBack& frameCb, int apiTimeoutMs, uint16_t packetSize, uint16_t apiPort, uint16_t imageStreamPort)
 {
-	CDevicePtr cameraPtr(new CDevice(connection, frameCb, packetSize, apiPort, imageStreamPort));
+	CDevicePtr cameraPtr(new CDevice(connection, apiTimeoutMs, frameCb, packetSize, apiPort, imageStreamPort));
 	return cameraPtr;
 }
 
-CDevice::CDevicePtr CDevice::Create(const UdpPort::Connection & connection, const TFrameCallBack & frameCb, const TErrorCallBack & onErrorCb, uint16_t packetSize, uint16_t apiPort, uint16_t imageStreamPort)
+CDevice::CDevicePtr CDevice::Create(const UdpPort::Connection & connection, const TFrameCallBack & frameCb, const TErrorCallBack & onErrorCb, int apiTimeoutMs, uint16_t packetSize, uint16_t apiPort, uint16_t imageStreamPort)
 {
-	CDevicePtr cameraPtr = Create(connection, frameCb, packetSize, apiPort, imageStreamPort);
+	CDevicePtr cameraPtr = Create(connection, frameCb, apiTimeoutMs, packetSize, apiPort, imageStreamPort);
 	cameraPtr->m_errorCb = onErrorCb;
 	return cameraPtr;
 }
@@ -478,40 +479,45 @@ void CDevice::Connect(uint32_t cameraControlIntervalMs)
 
 	bool ok;
 	auto sendControl = SendControl();
-	if (sendControl->Result(ok, error)){
+	if (sendControl->Result(ok, error, m_apiTimeout)){
 		auto sendIp = WriteRegisterMemory(MGevAddressDataStreamTargetIP, ipBuff);
-		if (sendIp->Result(ok, error)){
+		if (sendIp->Result(ok, error, m_apiTimeout)){
 			std::vector<uint8_t> portBuff(2);
 			memcpy(portBuff.data(), &m_imageStreamPortNum, 2);
 			auto sendPort = WriteRegisterMemory(MGevAddressDataStreamTargetPort, portBuff);
-			if (sendPort->Result(ok, error)){
+			if (sendPort->Result(ok, error, m_apiTimeout)){
 				std::vector<uint8_t> packSizeBuff(2);
 				memcpy(packSizeBuff.data(), &m_packetSize, 2);
 				auto sendPackSize = WriteRegisterMemory(MGevAddressDataStreamPacketSize, packSizeBuff);
-				sendPackSize->Result(ok, error);
+				sendPackSize->Result(ok, error, m_apiTimeout);
 			}
 		}
+	}
+	else{
+		Disconnect();
+		OnError(Error::APIError, error);
+		return;
 	}
 
 	auto xmlPromise = GetGenICamApiXml();
 	std::string xml;
 	if (!xmlPromise->Result(xml, error)) {
+		Disconnect();
 		OnError(Error::APIError, error);
-		m_connected = false;
 		return;
 	}
 
 	try{
 		m_genApi._LoadXMLFromString(xml.c_str());
 		if(!m_genApi._Connect(this)){
+			Disconnect();
 			OnError(Error::APIError, "GenICam API connection error.");
-			m_connected = false;
 			return;
 		}
 	}
 	catch(const std::exception& e){
+		Disconnect();
 		OnError(Error::APIError, e.what());
-		m_connected = false;
 		return;
 	}
 
@@ -528,29 +534,32 @@ void CDevice::Connect(uint32_t cameraControlIntervalMs)
 
 				bool result = false;
 				std::string error;
-				if (controlPromise->Result(result, 500)){
+				if (controlPromise->Result(result, m_apiTimeout)){
 					break;
 				}
 				else{
+					m_connected = false;
 					OnError(Error::ConnectionError, "Head beat timeout");
 				}
 			}
 		}
+
+		m_apiPort.Stop();
+		m_frameStreamPort.Stop();
 	}));
 
 	if (!error.empty()){
-		m_connected = false;
+		Disconnect();
 		OnError(Error::ConnectionError, error);
 	}
 }
 
 void CDevice::Disconnect()
 {
-	if (!m_connected){
-		return;
-	}
-
 	m_connected = false;
+
+	m_apiPort.Stop();
+	m_frameStreamPort.Stop();
 
 	if (m_cameraControlThreadPtr){
 		m_cameraControlThreadPtr->join();
@@ -585,7 +594,7 @@ void CDevice::Read(void * pBuffer, int64_t Address, int64_t Length)
 
 		std::vector<uint8_t> value;
 		std::string error;
-		if (!readRegister->Result(value)){
+		if (!readRegister->Result(value, m_apiTimeout)){
 			OnError(Error::APIError, error);
 			break;
 		}
@@ -624,7 +633,7 @@ void CDevice::Write(const void * pBuffer, int64_t Address, int64_t Length)
 
 		auto writeRegister = WriteRegisterMemory(uint32_t(Address), buffer);
 
-		if (!writeRegister->Result(ok, error)){
+		if (!writeRegister->Result(ok, error, m_apiTimeout)){
 			if (m_errorCb){
 				m_errorCb(Error::APIError, error);
 			}

@@ -211,7 +211,7 @@ bool UdpPort::Start(uint32_t localip, uint16_t localport, uint32_t remoteip, uin
 
 			if (msgs.empty()){
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
-				continue;			
+				continue;
 			}
 			else {
 				for (const auto& m : msgs) {
@@ -250,6 +250,8 @@ void UdpPort::Stop()
 	if (m_implPtr->m_queueThreadPtr) {
 		m_implPtr->m_queueThreadPtr->join();
 	}
+
+	m_implPtr->m_heandlerList.clear();
 }
 
 bool UdpPort::IsStarted()

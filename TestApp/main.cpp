@@ -163,6 +163,16 @@ int main(int argc, char* argv[])
 		std::cout << "Height " << winHeight << std::endl;
 	}
 
+	GenApi::CEnumerationPtr triggerSelector = api._GetNode("TriggerSelector");
+	if (triggerSelector.IsValid()){
+		triggerSelector->FromString("FrameStart");
+	}
+
+	GenApi::CEnumerationPtr triggerMode = api._GetNode("TriggerMode");
+	if (triggerMode.IsValid()){
+		triggerMode->FromString("Off");
+	}
+
 	if (acqStart.IsValid()) {
 		acqStart->Execute();
 		std::cout << "AcquisitionStart" << std::endl;

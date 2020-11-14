@@ -244,6 +244,8 @@ void UdpPort::Stop()
 	if (m_implPtr->m_queueThreadPtr){
 		m_implPtr->m_queueThreadPtr->join();
 	}
+
+	m_implPtr->m_heandlerList.clear();
 }
 
 bool UdpPort::IsStarted()

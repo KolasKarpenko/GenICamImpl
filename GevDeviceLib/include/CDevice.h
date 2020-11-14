@@ -31,8 +31,8 @@ public:
 
 	static UdpConnnectionPromisePtr FindAll(uint32_t waitTimeMs = 500);
 
-	static CDevicePtr Create(const UdpPort::Connection& connection, const TFrameCallBack& frameCb, uint16_t packetSize = 4004, uint16_t apiPort = 12220, uint16_t imageStreamPort = 12221);
-	static CDevicePtr Create(const UdpPort::Connection& connection, const TFrameCallBack& frameCb, const TErrorCallBack& onErrorCb, uint16_t packetSize = 4004, uint16_t apiPort = 12220, uint16_t imageStreamPort = 12221);
+	static CDevicePtr Create(const UdpPort::Connection& connection, const TFrameCallBack& frameCb, int apiTimeoutMs = 500, uint16_t packetSize = 4004, uint16_t apiPort = 12220, uint16_t imageStreamPort = 12221);
+	static CDevicePtr Create(const UdpPort::Connection& connection, const TFrameCallBack& frameCb, const TErrorCallBack& onErrorCb, int apiTimeoutMs = 500, uint16_t packetSize = 4004, uint16_t apiPort = 12220, uint16_t imageStreamPort = 12221);
 
 	void Connect(uint32_t cameraControlIntervalMs = 3000);
 	void Disconnect();
@@ -56,7 +56,7 @@ public:
 private:
 	typedef std::function<void(const std::vector<uint8_t>& message, uint16_t messageType, uint16_t status)> OnReceaveMessage;
 
-	CDevice(const UdpPort::Connection& connection, const TFrameCallBack& frameCb, uint16_t packetSize, uint16_t apiPort, uint16_t imageStreamPort);
+	CDevice(const UdpPort::Connection& connection, int apiTimeoutMs, const TFrameCallBack& frameCb, uint16_t packetSize, uint16_t apiPort, uint16_t imageStreamPort);
 
 	void OnApiDataHandler(const std::vector<uint8_t>& data);
 	void OnFrameStreamHandler(const std::vector<uint8_t>& data);
@@ -80,6 +80,7 @@ private:
 	uint16_t m_imageStreamPortNum;
 	std::shared_ptr<std::thread> m_cameraControlThreadPtr;
 	std::atomic<bool> m_connected;
+	const int m_apiTimeout;
 
 	UdpPort m_apiPort;
 	UdpPort m_frameStreamPort;
