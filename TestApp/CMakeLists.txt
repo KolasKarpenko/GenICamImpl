@@ -12,7 +12,6 @@ include_directories(${GENICAMLIB_INCLUDE} ${GEVDEVICELIB_INCLUDE} ${PROMISELIB_I
 add_executable(TestApp main.cpp)
 
 target_link_libraries(TestApp
-PromiseLib
 GevDeviceLib
 ${OPENGL_LIBRARIES} 
 ${GLUT_LIBRARY}

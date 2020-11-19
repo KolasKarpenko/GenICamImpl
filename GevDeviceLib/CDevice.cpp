@@ -233,12 +233,12 @@ void CDevice::OnFrameStreamHandler(const std::vector<uint8_t>& data)
 
 CDevice::UdpConnnectionPromisePtr CDevice::FindAll(uint32_t waitTimeMs)
 {
-	return ms_promises.CreateAsync<std::vector<UdpPort::Connection>>(
+	return ms_promises.CreateAsync<std::vector<UdpPort::Connection>, std::string>(
 		[waitTimeMs](
-		const TPromise<std::vector<UdpPort::Connection>>::OnResolveFunc& resolve,
-		const TPromise<std::vector<UdpPort::Connection>>::OnRejectFunc& /*reject*/,
-		const TPromise<std::vector<UdpPort::Connection>>::OnProgressFunc& /*progress*/,
-		const TPromise<std::vector<UdpPort::Connection>>::IsCanceledFunc& /*isCanceled*/
+		const TPromise<std::vector<UdpPort::Connection>, std::string>::OnResolveFunc& resolve,
+		const TPromise<std::vector<UdpPort::Connection>, std::string>::OnRejectFunc& /*reject*/,
+		const TPromise<std::vector<UdpPort::Connection>, std::string>::OnProgressFunc& /*progress*/,
+		const TPromise<std::vector<UdpPort::Connection>, std::string>::IsCanceledFunc& /*isCanceled*/
 	){
 		const auto interfaces = UdpPort::GetLocalAddressList();
 		
@@ -394,13 +394,13 @@ bool CDevice::WriteRegisterMemory(uint32_t address, const std::vector<uint8_t>& 
 	return true;
 }
 
-TPromise<std::vector<uint8_t>>::PromisePtr CDevice::ReadRegisterMemory(uint32_t address)
+TPromise<std::vector<uint8_t>, std::string>::PromisePtr CDevice::ReadRegisterMemory(uint32_t address)
 {
-	return ms_promises.Create<std::vector<uint8_t>>([this, address](
-			const TPromise<std::vector<uint8_t>>::OnResolveFunc& resolve,
-			const TPromise<std::vector<uint8_t>>::OnRejectFunc& reject,
-			const TPromise<std::vector<uint8_t>>::OnProgressFunc& /*progress*/,
-			const TPromise<std::vector<uint8_t>>::IsCanceledFunc& /*isCanceled*/
+	return ms_promises.Create<std::vector<uint8_t>, std::string>([this, address](
+			const TPromise<std::vector<uint8_t>, std::string>::OnResolveFunc& resolve,
+			const TPromise<std::vector<uint8_t>, std::string>::OnRejectFunc& reject,
+			const TPromise<std::vector<uint8_t>, std::string>::OnProgressFunc& /*progress*/,
+			const TPromise<std::vector<uint8_t>, std::string>::IsCanceledFunc& /*isCanceled*/
 	){
 			if (!ReadRegisterMemory(address, [resolve, reject, address](const std::vector<uint8_t>& data, uint16_t status){
 				if (status == MGevStatusSuccess){
@@ -419,13 +419,13 @@ TPromise<std::vector<uint8_t>>::PromisePtr CDevice::ReadRegisterMemory(uint32_t 
 	});
 }
 
-TPromise<bool>::PromisePtr CDevice::WriteRegisterMemory(uint32_t address, const std::vector<uint8_t>& data)
+TPromise<bool, std::string>::PromisePtr CDevice::WriteRegisterMemory(uint32_t address, const std::vector<uint8_t>& data)
 {
-	return ms_promises.Create<bool>([this, address, data](
-		const TPromise<bool>::OnResolveFunc& resolve,
-		const TPromise<bool>::OnRejectFunc& reject,
-		const TPromise<bool>::OnProgressFunc& /*progress*/,
-		const TPromise<bool>::IsCanceledFunc& /*isCanceled*/
+	return ms_promises.Create<bool, std::string>([this, address, data](
+		const TPromise<bool, std::string>::OnResolveFunc& resolve,
+		const TPromise<bool, std::string>::OnRejectFunc& reject,
+		const TPromise<bool, std::string>::OnProgressFunc& /*progress*/,
+		const TPromise<bool, std::string>::IsCanceledFunc& /*isCanceled*/
 	){
 		if (!WriteRegisterMemory(uint32_t(address), data, [resolve, reject, address](const std::vector<uint8_t>& /*data*/, uint16_t status){
 			if (status == MGevStatusSuccess){
@@ -443,7 +443,7 @@ TPromise<bool>::PromisePtr CDevice::WriteRegisterMemory(uint32_t address, const 
 	});
 }
 
-TPromise<bool>::PromisePtr CDevice::SendControl()
+TPromise<bool, std::string>::PromisePtr CDevice::SendControl()
 {
 	std::vector<uint8_t> data(4);
 	memcpy(data.data(), &MGevValueExclusiveAccess, 4);
@@ -451,7 +451,7 @@ TPromise<bool>::PromisePtr CDevice::SendControl()
 	return WriteRegisterMemory(MGevAddressControl, data);
 }
 
-TPromise<bool>::PromisePtr CDevice::SendHeartBeat(uint32_t cameraControlIntervalMs)
+TPromise<bool, std::string>::PromisePtr CDevice::SendHeartBeat(uint32_t cameraControlIntervalMs)
 {
 	std::vector<uint8_t> data(4);
 	uint32_t beat = cameraControlIntervalMs * 4;
@@ -683,20 +683,20 @@ uint32_t CDevice::GetCameraIp() const
 	return m_cameraIp;
 }
 
-TPromise<std::string>::PromisePtr CDevice::GetGenICamApiXml()
+TPromise<std::string, std::string>::PromisePtr CDevice::GetGenICamApiXml()
 {
-	return ms_promises.CreateAsync<std::string>([this](
-		const TPromise<std::string>::OnResolveFunc& resolve,
-		const TPromise<std::string>::OnRejectFunc& reject,
-		const TPromise<std::string>::OnProgressFunc& progress,
-		const TPromise<std::string>::IsCanceledFunc& /*isCanceled*/
+	return ms_promises.CreateAsync<std::string, std::string>([this](
+		const TPromise<std::string, std::string>::OnResolveFunc& resolve,
+		const TPromise<std::string, std::string>::OnRejectFunc& reject,
+		const TPromise<std::string, std::string>::OnProgressFunc& progress,
+		const TPromise<std::string, std::string>::IsCanceledFunc& /*isCanceled*/
 	){
 
-		auto readBegin = ms_promises.Create<std::vector<uint8_t>>([this](
-			const TPromise<std::vector<uint8_t>>::OnResolveFunc& resolve,
-			const TPromise<std::vector<uint8_t>>::OnRejectFunc& reject,
-			const TPromise<std::vector<uint8_t>>::OnProgressFunc& /*progress*/,
-			const TPromise<std::vector<uint8_t>>::IsCanceledFunc& /*isCanceled*/
+		auto readBegin = ms_promises.Create<std::vector<uint8_t>, std::string>([this](
+			const TPromise<std::vector<uint8_t>, std::string>::OnResolveFunc& resolve,
+			const TPromise<std::vector<uint8_t>, std::string>::OnRejectFunc& reject,
+			const TPromise<std::vector<uint8_t>, std::string>::OnProgressFunc& /*progress*/,
+			const TPromise<std::vector<uint8_t>, std::string>::IsCanceledFunc& /*isCanceled*/
 		){
 			ReadMemoryBlock(MGevAddressGenICamZipFileInfoAddressFirst, 512, [resolve, reject](const std::vector<uint8_t>& data, uint16_t status){
 				if (status == MGevStatusSuccess){
@@ -754,11 +754,11 @@ TPromise<std::string>::PromisePtr CDevice::GetGenICamApiXml()
 
 		while (size)
 		{
-			auto readFile = ms_promises.Create<std::vector<uint8_t>>([this, addr, size](
-				const TPromise<std::vector<uint8_t>>::OnResolveFunc& resolve,
-				const TPromise<std::vector<uint8_t>>::OnRejectFunc& reject,
-				const TPromise<std::vector<uint8_t>>::OnProgressFunc& /*progress*/,
-				const TPromise<std::vector<uint8_t>>::IsCanceledFunc& /*isCanceled*/
+			auto readFile = ms_promises.Create<std::vector<uint8_t>, std::string>([this, addr, size](
+				const TPromise<std::vector<uint8_t>, std::string>::OnResolveFunc& resolve,
+				const TPromise<std::vector<uint8_t>, std::string>::OnRejectFunc& reject,
+				const TPromise<std::vector<uint8_t>, std::string>::OnProgressFunc& /*progress*/,
+				const TPromise<std::vector<uint8_t>, std::string>::IsCanceledFunc& /*isCanceled*/
 			){
 				ReadMemoryBlock(addr, size, [resolve, reject](const std::vector<uint8_t>& data, uint16_t status){
 					if (status == MGevStatusSuccess){

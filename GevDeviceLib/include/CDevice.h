@@ -22,7 +22,7 @@ public:
 	typedef std::shared_ptr<CDevice> CDevicePtr;
 	typedef std::function<void(const FrameData& frame)> TFrameCallBack;
 	typedef std::function<void(Error errType, const std::string& error)> TErrorCallBack;
-	typedef TPromise<std::vector<UdpPort::Connection>>::PromisePtr UdpConnnectionPromisePtr;
+	typedef TPromise<std::vector<UdpPort::Connection>, std::string>::PromisePtr UdpConnnectionPromisePtr;
 
 	~CDevice();
 
@@ -65,11 +65,11 @@ private:
 	bool ReadRegisterMemory(uint32_t address, const std::function<void(const std::vector<uint8_t>& data, uint16_t status)>& answer);
 	bool WriteRegisterMemory(uint32_t address, const std::vector<uint8_t>& value, const std::function<void(const std::vector<uint8_t>& data, uint16_t status)>& answer);
 
-	TPromise<std::vector<uint8_t>>::PromisePtr ReadRegisterMemory(uint32_t address);
-	TPromise<bool>::PromisePtr WriteRegisterMemory(uint32_t address, const std::vector<uint8_t>& data);
-	TPromise<bool>::PromisePtr SendControl();
-	TPromise<bool>::PromisePtr SendHeartBeat(uint32_t cameraControlIntervalMs);
-	TPromise<std::string>::PromisePtr GetGenICamApiXml();
+	TPromise<std::vector<uint8_t>, std::string>::PromisePtr ReadRegisterMemory(uint32_t address);
+	TPromise<bool, std::string>::PromisePtr WriteRegisterMemory(uint32_t address, const std::vector<uint8_t>& data);
+	TPromise<bool, std::string>::PromisePtr SendControl();
+	TPromise<bool, std::string>::PromisePtr SendHeartBeat(uint32_t cameraControlIntervalMs);
+	TPromise<std::string, std::string>::PromisePtr GetGenICamApiXml();
 
 	void OnError(Error errType, const std::string& err);
 

@@ -1,0 +1,10 @@
+cmake_minimum_required (VERSION 3.0)
+
+project(PromiseLib)
+
+set(PROMISELIB_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+file(GLOB PROMISELIB_HEADERS "${PROMISELIB_INCLUDE}/*.h")
+
+include_directories(${PROMISELIB_INCLUDE})
+
+set(PROMISELIB_INCLUDE ${PROMISELIB_INCLUDE} PARENT_SCOPE)
