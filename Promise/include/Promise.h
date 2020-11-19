@@ -24,6 +24,7 @@ public:
 
 	virtual ~IPromise() {}
 	virtual void Reset() = 0;
+	virtual void Cancel() = 0;
 
 	State GetState() const
 	{
@@ -176,7 +177,7 @@ public:
 		return Result(result, err, timeoutMs);
 	}
 
-	virtual void Cancel()
+	virtual void Cancel() override
 	{
 		std::lock_guard<std::recursive_mutex> lock(m_mutex);
 
@@ -268,6 +269,7 @@ private:
 class PromiseContext
 {
 private:
+
 	template<typename TResult, typename TError>
 	class PromiseBase : public TPromise<TResult, TError>
 	{
@@ -282,7 +284,6 @@ private:
 
 	protected:
 		PromiseBase(const typename TPromise<TResult, TError>::PromiseFunc& impl, PromiseContext& context) : TPromise<TResult, TError>(impl), m_context(context) {
-			std::lock_guard<std::mutex> lock(context.m_poolMutex);
 			static size_t lastId = 0;
 			m_id = lastId++;
 		}
@@ -368,6 +369,19 @@ private:
 	};
 
 public:
+	void Cancel()
+	{
+		std::map<size_t, std::shared_ptr<IPromise>> pool;
+		{
+			std::lock_guard<std::mutex> lock(m_poolMutex);
+			pool = m_pool;
+		}
+
+		for (auto& p : pool) {
+			p.second->Cancel();
+		}
+	}
+
 	void Join()
 	{
 		std::mutex m;
