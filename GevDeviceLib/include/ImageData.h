@@ -120,6 +120,9 @@ struct ImageData
 {
 	ImageData();
 	ImageData(const FrameData& frameData);
+	ImageData(FrameData&& frameData);
+
+	void SetHeader(const GVSP_Image_Leader * leader);
 
 	static ImageData Demosaic(const ImageData& image);
 

@@ -16,16 +16,30 @@ ImageData::ImageData(const FrameData& frameData) : Timestamp(frameData.Timestamp
 		return;
 	}
 
-	const GVSP_Image_Leader *ptrGVSP_Image_Leader = (const GVSP_Image_Leader *) frameData.Header.data();
-
-	PixelType = static_cast<GVSP_PIXEL_TYPES>(UdpPort::Ntohl(ptrGVSP_Image_Leader->PixelType));
-	SizeX = UdpPort::Ntohl(ptrGVSP_Image_Leader->SizeX);
-	SizeY = UdpPort::Ntohl(ptrGVSP_Image_Leader->SizeY);
-	OffsetX = UdpPort::Ntohl(ptrGVSP_Image_Leader->OffsetX);
-	OffsetY = UdpPort::Ntohl(ptrGVSP_Image_Leader->OffsetY);
-	PaddingX = UdpPort::Ntohs(ptrGVSP_Image_Leader->PaddingX);
-	PaddingY = UdpPort::Ntohs(ptrGVSP_Image_Leader->PaddingY);
+	SetHeader((const GVSP_Image_Leader *)frameData.Header.data());
 	Bitmap = frameData.Data;
+}
+
+ImageData::ImageData(FrameData&& frameData)
+{
+	if (!IsValid){
+		LostPackets = frameData.LostPackets;
+		return;
+	}
+
+	SetHeader((const GVSP_Image_Leader *)frameData.Header.data());
+	Bitmap = std::move(frameData.Data);
+}
+
+void ImageData::SetHeader(const GVSP_Image_Leader * leader)
+{
+	PixelType = static_cast<GVSP_PIXEL_TYPES>(UdpPort::Ntohl(leader->PixelType));
+	SizeX = UdpPort::Ntohl(leader->SizeX);
+	SizeY = UdpPort::Ntohl(leader->SizeY);
+	OffsetX = UdpPort::Ntohl(leader->OffsetX);
+	OffsetY = UdpPort::Ntohl(leader->OffsetY);
+	PaddingX = UdpPort::Ntohs(leader->PaddingX);
+	PaddingY = UdpPort::Ntohs(leader->PaddingY);
 }
 
 
