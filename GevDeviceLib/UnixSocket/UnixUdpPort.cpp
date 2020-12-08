@@ -278,4 +278,10 @@ uint32_t UdpPort::Ntohl(uint32_t val)
 	return ntohl(val);
 }
 
+uint64_t UdpPort::MacAddress(uint32_t ip)
+{
+	//TODO: to implement
+	return 0;
+}
+
 }

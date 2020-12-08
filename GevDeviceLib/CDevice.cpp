@@ -571,6 +571,11 @@ bool CDevice::IsConnected() const
 	return m_connected;
 }
 
+uint64_t CDevice::GetMacAddress() const
+{
+	return UdpPort::MacAddress(m_cameraIp);
+}
+
 GenApi::EAccessMode CDevice::GetAccessMode() const
 {
 	return GenApi::RW;

@@ -28,7 +28,7 @@ ${GENICAMLIB_XmlParser_LIB}
 )
 
 if(WIN32)
-  target_link_libraries(TestApp wsock32 ws2_32)
+  target_link_libraries(TestApp wsock32 ws2_32 iphlpapi)
 else()
   target_link_libraries(TestApp pthread)
 endif()

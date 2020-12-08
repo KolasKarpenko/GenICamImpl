@@ -94,8 +94,9 @@ int main(int argc, char* argv[])
 	std::cout << "connecting to device: " << gevdevice::UdpPort::IpAddressToString(connections[0].cameraAddr) << std::endl;
 
 	auto camera = gevdevice::CDevice::Create(connections[0], onFrame, onError);
-	camera->Connect();
+	std::cout << "device mac address: " << gevdevice::UdpPort::MacAddressToString(camera->GetMacAddress()) << std::endl;
 
+	camera->Connect();
 	if (!camera->IsConnected()) {
 		return 0;
 	}

@@ -6,6 +6,7 @@
 #include <atomic>
 #include <Winsock2.h>
 #include <ws2tcpip.h>
+#include <iphlpapi.h> // shall follow winsock2
 
 namespace gevdevice{
 
@@ -282,6 +283,17 @@ uint16_t UdpPort::Ntohs(uint16_t val)
 uint32_t UdpPort::Ntohl(uint32_t val)
 {
 	return ntohl(val);
+}
+
+uint64_t UdpPort::MacAddress(uint32_t ip)
+{
+	uint64_t macAddress = 0;
+	ULONG phyAddrLen = 8;  /* six bytes would be enough - but uint64_t is 8 bytes long */
+
+	//Send an arp packet
+	DWORD err = SendARP(ip, 0, &macAddress, &phyAddrLen);
+
+	return phyAddrLen > 0 && err == NO_ERROR ? macAddress : 0;
 }
 
 }
