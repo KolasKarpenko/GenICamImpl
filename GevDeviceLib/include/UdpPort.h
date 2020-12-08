@@ -7,6 +7,7 @@
 #include <vector>
 #include <mutex>
 #include <sstream>
+#include <iomanip>
 
 
 namespace gevdevice
@@ -81,6 +82,20 @@ public:
 		ss << (int)a << "." << (int)b << "." << (int)c << "." << (int)d;
 		return ss.str();
 	}
+
+	static std::string MacAddressToString(uint64_t addr)
+	{
+		const uint8_t* addrBytes = (const uint8_t*)(&addr);
+
+		std::stringstream ss;
+		ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(addrBytes[0]);
+		for (unsigned i = 1; i < 6; ++i) // MAC is 6 bytes long
+			ss << ":" << std::hex << std::setw(2) << static_cast<int>(addrBytes[i]);
+
+		return ss.str();
+	}
+
+	static uint64_t MacAddress(uint32_t ip);
 
 private:
 	std::shared_ptr<UdpPortImpl> m_implPtr;

@@ -38,6 +38,8 @@ public:
 	void Disconnect();
 	bool IsConnected() const;
 
+	uint64_t GetMacAddress() const;
+
 	// reimplemented (IBase)
 	virtual GenApi::EAccessMode GetAccessMode() const override;
 
